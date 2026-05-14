@@ -11,10 +11,17 @@ type UseAuthOptions = {
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } = options ?? {};
+  const {
+    redirectOnUnauthenticated = false,
+    redirectPath = getLoginUrl(),
+  } = options ?? {};
+
   const utils = trpc.useUtils();
+
   const [authReady, setAuthReady] = useState(false);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(() => firebaseAuth.currentUser);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(
+    () => firebaseAuth.currentUser,
+  );
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, currentUser => {
@@ -42,7 +49,13 @@ export function useAuth(options?: UseAuthOptions) {
       await signOut(firebaseAuth);
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
-      if (error instanceof TRPCClientError && error.data?.code === "UNAUTHORIZED") return;
+      if (
+        error instanceof TRPCClientError &&
+        error.data?.code === "UNAUTHORIZED"
+      ) {
+        return;
+      }
+
       throw error;
     } finally {
       utils.auth.me.setData(undefined, null);
@@ -52,14 +65,26 @@ export function useAuth(options?: UseAuthOptions) {
 
   const state = useMemo(() => {
     const user = authReady && firebaseUser ? meQuery.data ?? null : null;
+
     return {
       user,
       firebaseUser,
-      loading: !authReady || (Boolean(firebaseUser) && meQuery.isLoading) || logoutMutation.isPending,
+      loading:
+        !authReady ||
+        (Boolean(firebaseUser) && meQuery.isLoading) ||
+        logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(user),
     };
-  }, [authReady, firebaseUser, logoutMutation.error, logoutMutation.isPending, meQuery.data, meQuery.error, meQuery.isLoading]);
+  }, [
+    authReady,
+    firebaseUser,
+    logoutMutation.error,
+    logoutMutation.isPending,
+    meQuery.data,
+    meQuery.error,
+    meQuery.isLoading,
+  ]);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
@@ -69,7 +94,12 @@ export function useAuth(options?: UseAuthOptions) {
     if (window.location.pathname === redirectPath) return;
 
     window.location.href = redirectPath;
-  }, [redirectOnUnauthenticated, redirectPath, state.loading, state.user]);
+  }, [
+    redirectOnUnauthenticated,
+    redirectPath,
+    state.loading,
+    state.user,
+  ]);
 
   return {
     ...state,
