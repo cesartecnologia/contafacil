@@ -1,6 +1,6 @@
 import admin from "firebase-admin";
-import { ENV } from "./_core/env";
-import { generateReceipt, getAmountInWords } from "./_core/receiptGenerator";
+import { ENV } from "./_core/env.js";
+import { generateReceipt, getAmountInWords } from "./_core/receiptGenerator.js";
 import type {
   InsertUser,
   User,
@@ -15,17 +15,42 @@ import type {
   InsertNotification,
   Appointment,
   InsertAppointment,
-} from "../drizzle/schema";
+} from "../drizzle/schema.js";
 
 type CollectionName = "users" | "companies" | "clients" | "fees" | "notifications" | "appointments" | "counters";
 type AnyRecord = Record<string, any>;
 
 let firestore: admin.firestore.Firestore | null = null;
 
+function normalizePrivateKey(value: string | undefined) {
+  if (!value) return "";
+
+  let key = value.trim();
+
+  // Aceita tanto .env local com aspas quanto Vercel sem aspas.
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1);
+  }
+
+  key = key.replace(/\\n/g, "\n");
+
+  // Proteção extra para importações que transformaram quebras em espaços.
+  if (!key.includes("\n") && key.includes("-----BEGIN PRIVATE KEY-----") && key.includes("-----END PRIVATE KEY-----")) {
+    key = key
+      .replace(/-----BEGIN PRIVATE KEY-----\s*/, "-----BEGIN PRIVATE KEY-----\n")
+      .replace(/\s*-----END PRIVATE KEY-----/, "\n-----END PRIVATE KEY-----\n");
+  }
+
+  return key;
+}
+
 function getFirebaseConfig() {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(

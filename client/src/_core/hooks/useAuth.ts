@@ -52,7 +52,6 @@ export function useAuth(options?: UseAuthOptions) {
 
   const state = useMemo(() => {
     const user = authReady && firebaseUser ? meQuery.data ?? null : null;
-
     return {
       user,
       firebaseUser,
@@ -60,15 +59,7 @@ export function useAuth(options?: UseAuthOptions) {
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(user),
     };
-  }, [
-    authReady,
-    firebaseUser,
-    logoutMutation.error,
-    logoutMutation.isPending,
-    meQuery.data,
-    meQuery.error,
-    meQuery.isLoading,
-  ]);
+  }, [authReady, firebaseUser, logoutMutation.error, logoutMutation.isPending, meQuery.data, meQuery.error, meQuery.isLoading]);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;

@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { numberToWords } from "./numberToWords.js";
+import { numberToWords } from "./numberToWords";
 
 interface ReceiptData {
   companyName: string;

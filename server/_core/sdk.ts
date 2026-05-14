@@ -1,7 +1,7 @@
 import type { Request } from "express";
 import { ForbiddenError } from "@shared/_core/errors";
-import type { User } from "../../drizzle/schema";
-import * as db from "../db";
+import type { User } from "../../drizzle/schema.js";
+import * as db from "../db.js";
 
 function readBearerToken(req: Request) {
   const authorization = req.headers.authorization;
