@@ -84,8 +84,8 @@ export default function Dashboard() {
           size="icon"
           className="h-10 w-10 rounded-2xl border border-white/50 bg-white/70 p-0 shadow-sm backdrop-blur-xl"
           onClick={togglePrivacyMode}
-          title=
-          aria-label=
+          title={privacyMode ? "Mostrar valores" : "Ocultar valores"}
+          aria-label={privacyMode ? "Mostrar valores" : "Ocultar valores"}
         >
           {privacyMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </Button>
