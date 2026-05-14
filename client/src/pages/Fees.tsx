@@ -7,9 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Edit2, Download, CheckCircle2, MoreVertical, MessageCircle, Eye, Search } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { Plus, Trash2, Edit2, Download, CheckCircle2, MoreVertical, MessageCircle, Eye, Search, Check, ChevronsUpDown } from "lucide-react";
+import { cn, formatCurrency } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,6 +59,7 @@ export default function Fees() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [feeToPay, setFeeToPay] = useState<any | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const { confirm } = useConfirmDialog();
 
   const { data: fees = [], isLoading: feesLoading, refetch: refetchFees } = trpc.fees.listByCompany.useQuery(
@@ -282,6 +285,7 @@ export default function Fees() {
           if (!open) {
             setEditingId(null);
             form.reset();
+            setClientSearchOpen(false);
           }
         }}>
           <DialogTrigger asChild>
@@ -294,18 +298,72 @@ export default function Fees() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField control={form.control} name="clientId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {clients.map(client => <SelectItem key={client.id} value={String(client.id)}>{client.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <FormField control={form.control} name="clientId" render={({ field }) => {
+                  const selectedClient = clients.find(client => String(client.id) === field.value);
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Cliente</FormLabel>
+                      <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={clientSearchOpen}
+                              className={cn(
+                                "h-11 w-full justify-between rounded-xl border-primary/45 bg-white/55 px-3 font-normal shadow-none backdrop-blur-md hover:bg-white/70",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <span className="truncate">
+                                {selectedClient ? selectedClient.name : "Buscar e selecionar cliente"}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Digite o nome, CPF/CNPJ ou telefone" />
+                            <CommandList>
+                              <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {clients.map(client => {
+                                  const value = [client.name, client.cpfCnpj, client.phone, client.email]
+                                    .filter(Boolean)
+                                    .join(" ");
+
+                                  return (
+                                    <CommandItem
+                                      key={client.id}
+                                      value={value}
+                                      onSelect={() => {
+                                        field.onChange(String(client.id));
+                                        form.setValue("amount", String(client.monthlyFee || ""), { shouldValidate: true });
+                                        setClientSearchOpen(false);
+                                      }}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", field.value === String(client.id) ? "opacity-100" : "opacity-0")} />
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate font-medium">{client.name}</p>
+                                        <p className="truncate text-xs text-muted-foreground">
+                                          {client.cpfCnpj || "CPF/CNPJ não informado"}{client.phone ? ` · ${client.phone}` : ""}
+                                        </p>
+                                      </div>
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }} />
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField control={form.control} name="competence" render={({ field }) => (
                     <FormItem>
