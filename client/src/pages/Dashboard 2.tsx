@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { DollarSign, Users, Clock, AlertCircle, BriefcaseBusiness, CheckCircle2 } from "lucide-react";
+import { DollarSign, Users, Clock, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function Dashboard() {
@@ -170,80 +170,6 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground mt-1">
               {(stats?.overdueCount as number) || 0} honorários
             </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="backdrop-blur-md bg-white/40 border-white/20 hover:bg-white/50 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Serviços Recebidos</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            {user?.role === "admin" ? (
-              <>
-                {isLoading ? <Skeleton className="h-8 w-32" /> : (
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(Number(stats?.servicesReceived) || 0)}
-                  </div>
-                )}
-                <p className="mt-1 text-xs text-muted-foreground">Recebidos no mês</p>
-              </>
-            ) : (
-              <div className="rounded-xl border border-white/30 bg-white/35 px-3 py-2 text-sm text-muted-foreground">
-                Disponível apenas para administradores.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-md bg-white/40 border-white/20 hover:bg-white/50 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Serviços Pendentes</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            {user?.role === "admin" ? (
-              <>
-                {isLoading ? <Skeleton className="h-8 w-32" /> : (
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {formatCurrency(Number(stats?.servicesPendingAmount) || 0)}
-                  </div>
-                )}
-                <p className="mt-1 text-xs text-muted-foreground">{Number(stats?.servicesPendingCount) || 0} serviço(s)</p>
-              </>
-            ) : (
-              <div className="rounded-xl border border-white/30 bg-white/35 px-3 py-2 text-sm text-muted-foreground">
-                Disponível apenas para administradores.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-md bg-white/40 border-white/20 hover:bg-white/50 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Serviços Realizados</CardTitle>
-            <BriefcaseBusiness className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-32" /> : (
-              <div className="text-2xl font-bold text-primary">{Number(stats?.servicesCompletedCount) || 0}</div>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">Serviços pagos</p>
-          </CardContent>
-        </Card>
-
-        <Card className="backdrop-blur-md bg-white/40 border-white/20 hover:bg-white/50 transition-all duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendências de Serviços</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-32" /> : (
-              <div className="text-2xl font-bold text-red-600">{Number(stats?.servicesPendingCount) || 0}</div>
-            )}
-            <p className="mt-1 text-xs text-muted-foreground">Aguardando pagamento</p>
           </CardContent>
         </Card>
       </div>

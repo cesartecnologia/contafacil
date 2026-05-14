@@ -18,6 +18,11 @@ import {
   getFeeById,
   updateFee,
   deleteFee,
+  createService,
+  getServicesByCompanyId,
+  getServiceById,
+  updateService,
+  deleteService,
   getDashboardStats,
   getNotificationsByUserId,
   markNotificationAsRead,
@@ -50,6 +55,10 @@ const logoDataUrl = z.string()
   .max(1_000_000, "Logo muito grande")
   .refine(value => /^data:image\/(png|jpe?g);base64,/i.test(value), "Envie uma logo PNG ou JPG válida.");
 
+const serviceTypeText = z.enum(["itr", "ccir", "contratos", "cartao_produtor", "irpf", "emissao_nf", "prestacao_mei", "prestacao_avulsos"]);
+const servicePaymentStatusText = z.enum(["pending", "paid"]);
+const paymentMethodText = z.enum(["pix", "dinheiro", "boleto", "cartao_credito", "cartao_debito", "transferencia", "outros"]);
+
 function assertCompanyAccess(userCompanyId: number | null | undefined, requestedCompanyId: number) {
   if (!userCompanyId || userCompanyId !== requestedCompanyId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Acesso negado para os dados desta empresa." });
@@ -70,6 +79,14 @@ async function assertFeeAccess(userCompanyId: number | null | undefined, feeId: 
     throw new TRPCError({ code: "FORBIDDEN", message: "Honorário não pertence à sua empresa." });
   }
   return fee;
+}
+
+async function assertServiceAccess(userCompanyId: number | null | undefined, serviceId: number) {
+  const service = await getServiceById(serviceId);
+  if (!service || !userCompanyId || service.companyId !== userCompanyId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Serviço não pertence à sua empresa." });
+  }
+  return service;
 }
 
 export const appRouter = router({
@@ -249,6 +266,109 @@ export const appRouter = router({
     delete: adminProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
       await assertFeeAccess(ctx.user.companyId, input);
       return deleteFee(input);
+    }),
+  }),
+
+  services: router({
+    create: protectedProcedure
+      .input(z.object({
+        companyId: z.number(),
+        clientName: safeText(180),
+        serviceType: serviceTypeText,
+        amount: moneyText,
+        paymentStatus: servicePaymentStatusText.optional(),
+        paymentMethod: paymentMethodText.nullable().optional(),
+        serviceDate: z.date(),
+        paymentDate: z.date().nullable().optional(),
+        notes: optionalText(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertCompanyAccess(ctx.user.companyId, input.companyId);
+        const paymentStatus = input.paymentStatus ?? "pending";
+        if (paymentStatus === "paid" && !input.paymentMethod) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a forma de pagamento para salvar o serviço como pago." });
+        }
+        return createService({
+          companyId: input.companyId,
+          clientName: input.clientName,
+          serviceType: input.serviceType,
+          amount: input.amount,
+          paymentStatus,
+          paymentMethod: paymentStatus === "paid" ? input.paymentMethod ?? null : null,
+          serviceDate: input.serviceDate,
+          paymentDate: paymentStatus === "paid" ? input.paymentDate ?? new Date() : null,
+          notes: input.notes || null,
+          createdByUserId: ctx.user.id,
+          paidByUserId: paymentStatus === "paid" ? ctx.user.id : null,
+        });
+      }),
+
+    listByCompany: protectedProcedure.input(z.number()).query(async ({ ctx, input }) => {
+      assertCompanyAccess(ctx.user.companyId, input);
+      return getServicesByCompanyId(input);
+    }),
+
+    getById: protectedProcedure.input(z.number()).query(async ({ ctx, input }) => {
+      return assertServiceAccess(ctx.user.companyId, input);
+    }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        clientName: safeText(180).optional(),
+        serviceType: serviceTypeText.optional(),
+        amount: moneyText.optional(),
+        paymentStatus: servicePaymentStatusText.optional(),
+        paymentMethod: paymentMethodText.nullable().optional(),
+        serviceDate: z.date().optional(),
+        paymentDate: z.date().nullable().optional(),
+        notes: optionalText(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const current = await assertServiceAccess(ctx.user.companyId, input.id);
+        const nextStatus = input.paymentStatus ?? current.paymentStatus;
+        const nextPaymentMethod = input.paymentMethod ?? current.paymentMethod;
+        if (nextStatus === "paid" && !nextPaymentMethod) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a forma de pagamento para marcar o serviço como pago." });
+        }
+        const { id, ...data } = input;
+        return updateService(id, {
+          ...data,
+          paymentStatus: nextStatus,
+          paymentMethod: nextStatus === "paid" ? nextPaymentMethod : null,
+          paymentDate: nextStatus === "paid" ? data.paymentDate ?? current.paymentDate ?? new Date() : null,
+          paidByUserId: nextStatus === "paid" ? ctx.user.id : null,
+        });
+      }),
+
+    markPaid: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        paymentMethod: paymentMethodText,
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await assertServiceAccess(ctx.user.companyId, input.id);
+        return updateService(input.id, {
+          paymentStatus: "paid",
+          paymentMethod: input.paymentMethod,
+          paymentDate: new Date(),
+          paidByUserId: ctx.user.id,
+        });
+      }),
+
+    markPending: protectedProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
+      await assertServiceAccess(ctx.user.companyId, input);
+      return updateService(input, {
+        paymentStatus: "pending",
+        paymentMethod: null,
+        paymentDate: null,
+        paidByUserId: null,
+      });
+    }),
+
+    delete: adminProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
+      await assertServiceAccess(ctx.user.companyId, input);
+      return deleteService(input);
     }),
   }),
 

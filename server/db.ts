@@ -11,13 +11,15 @@ import type {
   InsertClient,
   Fee,
   InsertFee,
+  Service,
+  InsertService,
   Notification,
   InsertNotification,
   Appointment,
   InsertAppointment,
 } from "../drizzle/schema.js";
 
-type CollectionName = "users" | "companies" | "clients" | "fees" | "notifications" | "appointments" | "counters";
+type CollectionName = "users" | "companies" | "clients" | "fees" | "services" | "notifications" | "appointments" | "counters";
 type AnyRecord = Record<string, any>;
 
 let firestore: admin.firestore.Firestore | null = null;
@@ -462,10 +464,64 @@ export async function deleteFee(id: number) {
   return deleteByNumericId("fees", id);
 }
 
+
+export async function createService(service: InsertService) {
+  const isPaid = service.paymentStatus === "paid";
+  return setWithNumericId<Service>("services", {
+    ...service,
+    paymentStatus: service.paymentStatus || "pending",
+    paymentMethod: isPaid ? service.paymentMethod ?? null : null,
+    paymentDate: isPaid ? service.paymentDate ?? now() : null,
+    notes: service.notes ?? null,
+    paidByUserId: isPaid ? service.paidByUserId ?? null : null,
+  } as Service);
+}
+
+export async function getServicesByCompanyId(companyId: number) {
+  const db = await getDb();
+  const result = await db.collection("services").where("companyId", "==", companyId).get();
+  return result.docs
+    .map(doc => normalizeRecord<Service>(doc.data()))
+    .sort((a, b) => Number(b.id) - Number(a.id));
+}
+
+export async function getServiceById(id: number) {
+  return getByNumericId<Service>("services", id);
+}
+
+export async function updateService(id: number, data: Partial<InsertService>) {
+  const current = await getServiceById(id);
+  if (!current) return undefined;
+
+  const nextStatus = data.paymentStatus ?? current.paymentStatus;
+  const payload: Partial<Service> = {
+    ...(data as Partial<Service>),
+  };
+
+  if (nextStatus === "paid") {
+    payload.paymentStatus = "paid";
+    payload.paymentDate = data.paymentDate ?? current.paymentDate ?? now();
+    payload.paymentMethod = data.paymentMethod ?? current.paymentMethod ?? null;
+    payload.paidByUserId = data.paidByUserId ?? current.paidByUserId ?? null;
+  } else {
+    payload.paymentStatus = "pending";
+    payload.paymentMethod = null;
+    payload.paymentDate = null;
+    payload.paidByUserId = null;
+  }
+
+  return updateByNumericId<Service>("services", id, payload);
+}
+
+export async function deleteService(id: number) {
+  return deleteByNumericId("services", id);
+}
+
 export async function getDashboardStats(companyId: number, month?: string) {
-  const [feesRows, clientsRows] = await Promise.all([
+  const [feesRows, clientsRows, servicesRows] = await Promise.all([
     getFeesByCompanyId(companyId),
     getClientsByCompanyId(companyId),
+    getServicesByCompanyId(companyId),
   ]);
 
   const currentMonth = month || new Date().toISOString().slice(0, 7);
@@ -475,6 +531,11 @@ export async function getDashboardStats(companyId: number, month?: string) {
   const pending = feesRows.filter(fee => fee.status === "pending");
   const overdue = feesRows.filter(fee => fee.status === "overdue");
 
+  const servicesReceived = servicesRows
+    .filter(service => service.paymentStatus === "paid" && normalizeDate(service.paymentDate)?.toISOString().slice(0, 7) === currentMonth)
+    .reduce((sum, service) => sum + Number(service.amount || 0), 0);
+  const servicesPendingRows = servicesRows.filter(service => service.paymentStatus === "pending");
+
   return {
     totalReceived,
     activeClients: clientsRows.filter(client => client.status === "active").length,
@@ -482,6 +543,10 @@ export async function getDashboardStats(companyId: number, month?: string) {
     pendingCount: pending.length,
     overdueAmount: overdue.reduce((sum, fee) => sum + Number(fee.amount || 0), 0),
     overdueCount: overdue.length,
+    servicesReceived,
+    servicesPendingAmount: servicesPendingRows.reduce((sum, service) => sum + Number(service.amount || 0), 0),
+    servicesCompletedCount: servicesRows.filter(service => service.paymentStatus === "paid").length,
+    servicesPendingCount: servicesPendingRows.length,
   };
 }
 

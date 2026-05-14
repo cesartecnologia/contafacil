@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { CalendarDays, DollarSign, FileText, LayoutDashboard, LogOut, PanelLeft, Settings, ShieldCheck, Users } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, DollarSign, FileText, LayoutDashboard, LogOut, PanelLeft, Settings, ShieldCheck, Users } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -90,6 +90,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
     { icon: CalendarDays, label: "Agenda", path: "/agenda" },
     { icon: Users, label: "Clientes", path: "/clients" },
     { icon: DollarSign, label: "Honorários", path: "/fees" },
+    { icon: BriefcaseBusiness, label: "Serviços", path: "/services" },
     ...(user?.role === "admin" ? [
       { icon: FileText, label: "Relatórios", path: "/reports" },
       { icon: Settings, label: "Empresa", path: "/company" },

@@ -9,6 +9,8 @@ export type ClientStatus = "active" | "inactive";
 export type TaxRegime = "mei" | "simples_nacional" | "lucro_presumido" | "lucro_real";
 export type FeeStatus = "pending" | "paid" | "overdue";
 export type PaymentMethod = "pix" | "dinheiro" | "boleto" | "cartao_credito" | "cartao_debito" | "transferencia" | "outros";
+export type ServiceType = "itr" | "ccir" | "contratos" | "cartao_produtor" | "irpf" | "emissao_nf" | "prestacao_mei" | "prestacao_avulsos";
+export type ServicePaymentStatus = "pending" | "paid";
 export type NotificationType = "fee_due_soon" | "fee_overdue" | "appointment_created" | "appointment_updated" | "appointment_cancelled" | "system";
 export type AppointmentStatus = "scheduled" | "cancelled";
 export type ReadFlag = "true" | "false";
@@ -83,6 +85,32 @@ export type InsertFee = Omit<Fee, "id" | "createdAt" | "updatedAt" | "receiptNum
   paymentMethod?: PaymentMethod | null;
 };
 
+
+
+export interface Service {
+  id: number;
+  companyId: number;
+  clientName: string;
+  serviceType: ServiceType;
+  amount: string;
+  paymentStatus: ServicePaymentStatus;
+  paymentMethod: PaymentMethod | null;
+  serviceDate: Date;
+  paymentDate: Date | null;
+  notes: string | null;
+  createdByUserId: number;
+  paidByUserId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type InsertService = Omit<Service, "id" | "createdAt" | "updatedAt" | "paymentMethod" | "paymentDate" | "notes" | "paidByUserId" | "paymentStatus"> & {
+  paymentStatus?: ServicePaymentStatus;
+  paymentMethod?: PaymentMethod | null;
+  paymentDate?: Date | null;
+  notes?: string | null;
+  paidByUserId?: number | null;
+};
 
 export interface Appointment {
   id: number;

@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import Company from "./pages/Company";
 import Users from "./pages/Users";
 import Agenda from "./pages/Agenda";
+import Services from "./pages/Services";
 import { useAuth } from "./_core/hooks/useAuth";
 import DashboardLayout from "./components/DashboardLayout";
 import { DashboardLayoutSkeleton } from "./components/DashboardLayoutSkeleton";
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/dashboard">{() => <ProtectedPage><Dashboard /></ProtectedPage>}</Route>
       <Route path="/clients">{() => <ProtectedPage><Clients /></ProtectedPage>}</Route>
       <Route path="/fees">{() => <ProtectedPage><Fees /></ProtectedPage>}</Route>
+      <Route path="/services">{() => <ProtectedPage><Services /></ProtectedPage>}</Route>
       <Route path="/agenda">{() => <ProtectedPage><Agenda /></ProtectedPage>}</Route>
       <Route path="/reports">{() => <ProtectedPage adminOnly><Reports /></ProtectedPage>}</Route>
       <Route path="/company">{() => <ProtectedPage adminOnly><Company /></ProtectedPage>}</Route>
