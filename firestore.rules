@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // O ContaFácil acessa o Firestore pelo backend com Firebase Admin SDK.
+    // Acesso direto do cliente é bloqueado para reduzir exposição de dados.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
