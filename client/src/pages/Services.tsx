@@ -55,6 +55,57 @@ const paymentMethodLabels: Record<string, string> = {
   outros: "Outros",
 };
 
+
+function normalizeDate(value: unknown): Date | null {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const maybeTimestamp = value as {
+      seconds?: number;
+      _seconds?: number;
+      toDate?: () => Date;
+    };
+
+    if (typeof maybeTimestamp.toDate === "function") {
+      const date = maybeTimestamp.toDate();
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    if (typeof maybeTimestamp.seconds === "number") {
+      const date = new Date(maybeTimestamp.seconds * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    if (typeof maybeTimestamp._seconds === "number") {
+      const date = new Date(maybeTimestamp._seconds * 1000);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+  }
+
+  return null;
+}
+
+function formatDateSafe(value: unknown, fallback = "Não informado") {
+  const date = normalizeDate(value);
+  if (!date) return fallback;
+  return date.toLocaleDateString("pt-BR");
+}
+
+function toDateInputValue(value: unknown) {
+  const date = normalizeDate(value);
+  if (!date) return new Date().toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
+
 function getPaymentMethodLabel(value?: string | null) {
   return value ? paymentMethodLabels[value] || value : "Não informado";
 }
@@ -213,7 +264,7 @@ export default function Services() {
       serviceType: service.serviceType,
       amount: String(service.amount),
       paymentStatus: service.paymentStatus,
-      serviceDate: new Date(service.serviceDate).toISOString().slice(0, 10),
+      serviceDate: toDateInputValue(service.serviceDate),
       notes: service.notes || "",
     });
     setIsOpen(true);
@@ -283,7 +334,7 @@ export default function Services() {
         formatCurrency(Number(service.amount || 0)),
         service.paymentStatus === "paid" ? "pago" : "pendente",
         getPaymentMethodLabel(service.paymentMethod),
-        new Date(service.serviceDate).toLocaleDateString("pt-BR"),
+        formatDateSafe(service.serviceDate, "—"),
         service.notes,
       ]
         .filter(Boolean)
@@ -460,7 +511,7 @@ export default function Services() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Data</p>
-                        <p className="font-medium">{new Date(service.serviceDate).toLocaleDateString("pt-BR")}</p>
+                        <p className="font-medium">{formatDateSafe(service.serviceDate, "—")}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Pagamento</p>
@@ -498,7 +549,7 @@ export default function Services() {
                         <td className="px-4 py-3">{service.clientName}</td>
                         <td className="px-4 py-3">{serviceTypeLabels[service.serviceType]}</td>
                         <td className="px-4 py-3 text-right font-semibold">{formatCurrency(Number(service.amount))}</td>
-                        <td className="px-4 py-3">{new Date(service.serviceDate).toLocaleDateString("pt-BR")}</td>
+                        <td className="px-4 py-3">{formatDateSafe(service.serviceDate, "—")}</td>
                         <td className="px-4 py-3">{getPaymentMethodLabel(service.paymentMethod)}</td>
                         <td className="px-4 py-3 text-center">{getPaymentStatusBadge(service.paymentStatus)}</td>
                         <td className="px-4 py-3 text-right" onClick={event => event.stopPropagation()}>
@@ -574,7 +625,7 @@ export default function Services() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Data do serviço</p>
-                  <p className="font-medium">{new Date(detailsService.serviceDate).toLocaleDateString("pt-BR")}</p>
+                  <p className="font-medium">{formatDateSafe(detailsService.serviceDate)}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
@@ -586,7 +637,7 @@ export default function Services() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Data do pagamento</p>
-                  <p className="font-medium">{detailsService.paymentDate ? new Date(detailsService.paymentDate).toLocaleDateString("pt-BR") : "Não informado"}</p>
+                  <p className="font-medium">{formatDateSafe(detailsService.paymentDate)}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Valor</p>

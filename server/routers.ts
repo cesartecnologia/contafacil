@@ -43,7 +43,7 @@ import {
 } from "./db.js";
 
 const safeText = (max: number) => z.string().trim().min(1).max(max);
-const optionalText = (max: number) => z.string().trim().max(max).optional();
+const optionalText = (max: number) => z.string().trim().max(max).nullable().optional();
 const documentText = z.string().trim().min(11).max(18).regex(/^[0-9./-]+$/, "Documento inválido");
 const cnpjText = z.string().trim().min(14).max(18).regex(/^[0-9./-]+$/, "CNPJ inválido");
 const phoneText = z.string().trim().max(30).regex(/^[0-9+()\s.-]*$/, "Telefone inválido").optional();
