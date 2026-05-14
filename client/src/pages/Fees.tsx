@@ -15,6 +15,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ConfirmDialogProvider";
 import { Badge } from "@/components/ui/badge";
 
 const feeSchema = z.object({
@@ -54,6 +55,7 @@ export default function Fees() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [detailsFee, setDetailsFee] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const { confirm } = useConfirmDialog();
 
   const { data: fees = [], isLoading: feesLoading, refetch: refetchFees } = trpc.fees.listByCompany.useQuery(
     companyId || 0,
@@ -126,8 +128,16 @@ export default function Fees() {
     });
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Tem certeza que deseja excluir este honorário?")) deleteMutation.mutate(id);
+  const handleDelete = async (id: number) => {
+    const confirmed = await confirm({
+      title: "Excluir honorário",
+      description: "Tem certeza que deseja excluir este honorário? Esta ação não poderá ser desfeita.",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      variant: "destructive",
+    });
+
+    if (confirmed) deleteMutation.mutate(id);
   };
 
   const handleEdit = (fee: any) => {

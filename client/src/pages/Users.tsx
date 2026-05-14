@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
+import { useConfirmDialog } from "@/components/ConfirmDialogProvider";
 
 const userSchema = z.object({
   name: z.string().min(2, "Informe o nome do usuário"),
@@ -38,6 +39,7 @@ export default function Users() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const { confirm } = useConfirmDialog();
   const { data: users = [], isLoading, refetch } = trpc.users.listByCompany.useQuery(undefined, {
     enabled: user?.role === "admin",
   });
@@ -124,8 +126,16 @@ export default function Users() {
     setIsOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Tem certeza que deseja remover este usuário?")) {
+  const handleDelete = async (id: number) => {
+    const confirmed = await confirm({
+      title: "Remover usuário",
+      description: "Tem certeza que deseja remover este usuário? Esta ação não poderá ser desfeita.",
+      confirmText: "Remover",
+      cancelText: "Cancelar",
+      variant: "destructive",
+    });
+
+    if (confirmed) {
       deleteMutation.mutate(id);
     }
   };

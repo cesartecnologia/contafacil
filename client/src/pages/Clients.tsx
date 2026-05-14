@@ -16,6 +16,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ConfirmDialogProvider";
 
 const taxRegimeLabels = {
   mei: "MEI",
@@ -46,6 +47,7 @@ export default function Clients() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const { confirm } = useConfirmDialog();
 
   const { data: clients = [], isLoading, refetch } = trpc.clients.listByCompany.useQuery(
     companyId || 0,
@@ -150,8 +152,16 @@ export default function Clients() {
     setIsOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Tem certeza que deseja excluir este cliente?")) deleteMutation.mutate(id);
+  const handleDelete = async (id: number) => {
+    const confirmed = await confirm({
+      title: "Excluir cliente",
+      description: "Tem certeza que deseja excluir este cliente? Esta ação não poderá ser desfeita.",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      variant: "destructive",
+    });
+
+    if (confirmed) deleteMutation.mutate(id);
   };
 
   const closeClientDialog = (open: boolean) => {
