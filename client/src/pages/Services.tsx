@@ -176,7 +176,7 @@ export default function Services() {
     amount: data.amount,
     paymentStatus: data.paymentStatus,
     serviceDate: new Date(`${data.serviceDate}T12:00:00`),
-    notes: data.notes?.trim() || null,
+    notes: data.notes?.trim() || undefined,
   });
 
   const onSubmit = (data: ServiceFormData) => {
