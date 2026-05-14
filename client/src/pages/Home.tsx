@@ -13,7 +13,7 @@ export default function Home() {
   // Redirect to dashboard if already logged in
   useEffect(() => {
     if (user) {
-      setLocation("/dashboard");
+      setLocation("/painel");
     }
   }, [user, setLocation]);
 

@@ -75,9 +75,16 @@ export default function Dashboard() {
             Bem-vindo ao seu painel de controle de honorários contábeis
           </p>
         </div>
-        <Button type="button" variant="outline" className="gap-2 self-start" onClick={togglePrivacyMode}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="self-start"
+          onClick={togglePrivacyMode}
+          title={privacyMode ? "Mostrar valores" : "Ocultar valores"}
+          aria-label={privacyMode ? "Mostrar valores" : "Ocultar valores"}
+        >
           {privacyMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-          {privacyMode ? "Mostrar valores" : "Ocultar valores"}
         </Button>
       </div>
 

@@ -36,7 +36,7 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!submitting && !loading && user) setLocation("/dashboard");
+    if (!submitting && !loading && user) setLocation("/painel");
   }, [loading, setLocation, submitting, user]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -58,7 +58,7 @@ export default function Register() {
       await updateProfile(credential.user, { displayName: name.trim() });
       await credential.user.getIdToken(true);
       toast.success("Conta criada com sucesso.");
-      setLocation("/dashboard");
+      setLocation("/painel");
     } catch (error) {
       toast.error(getFriendlyRegisterError(error));
     } finally {
@@ -147,7 +147,7 @@ export default function Register() {
 
                 <div className="mt-6 flex items-center justify-between gap-3 text-sm text-muted-foreground">
                   <Link href="/" className="transition-colors hover:text-foreground">Voltar</Link>
-                  <Link href="/login" className="text-red-600 transition-colors hover:text-red-700 hover:underline">Já tenho conta</Link>
+                  <Link href="/entrar" className="text-red-600 transition-colors hover:text-red-700 hover:underline">Já tenho conta</Link>
                 </div>
               </CardContent>
             </Card>

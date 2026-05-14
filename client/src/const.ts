@@ -1,1 +1,1 @@
-export const getLoginUrl = () => "/login";
+export const getLoginUrl = () => "/entrar";

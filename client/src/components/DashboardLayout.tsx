@@ -86,15 +86,15 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const isMobile = useIsMobile();
 
   const menuItems = useMemo(() => [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+    { icon: LayoutDashboard, label: "Dashboard", path: "/painel" },
     { icon: CalendarDays, label: "Agenda", path: "/agenda" },
-    { icon: Users, label: "Clientes", path: "/clients" },
-    { icon: DollarSign, label: "Honorários", path: "/fees" },
-    { icon: BriefcaseBusiness, label: "Serviços", path: "/services" },
+    { icon: Users, label: "Clientes", path: "/clientes" },
+    { icon: DollarSign, label: "Honorários", path: "/honorarios" },
+    { icon: BriefcaseBusiness, label: "Serviços", path: "/servicos" },
     ...(user?.role === "admin" ? [
-      { icon: FileText, label: "Relatórios", path: "/reports" },
-      { icon: Settings, label: "Empresa", path: "/company" },
-      { icon: ShieldCheck, label: "Usuários", path: "/users" },
+      { icon: FileText, label: "Relatórios", path: "/relatorios" },
+      { icon: Settings, label: "Empresa", path: "/empresa" },
+      { icon: ShieldCheck, label: "Usuários", path: "/usuarios" },
     ] : []),
   ], [user?.role]);
 

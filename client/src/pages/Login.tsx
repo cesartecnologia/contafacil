@@ -37,7 +37,7 @@ export default function Login() {
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) setLocation("/dashboard");
+    if (!loading && user) setLocation("/painel");
   }, [loading, setLocation, user]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -47,7 +47,7 @@ export default function Login() {
       const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
       await credential.user.getIdToken(true);
       toast.success("Login realizado com sucesso.");
-      setLocation("/dashboard");
+      setLocation("/painel");
     } catch (error) {
       toast.error(getFriendlyAuthError(error));
     } finally {
