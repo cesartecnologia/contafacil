@@ -8,3 +8,5 @@ dist/
 .manus-logs/
 .vercel
 .env*.local
+
+/public/
