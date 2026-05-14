@@ -7,6 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { DollarSign, Users, Clock, AlertCircle, BriefcaseBusiness, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import DashboardWidgets from "@/components/DashboardWidgets";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -66,7 +67,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Header with greeting */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Olá, {user?.name || "ContaFácil"}! 👋
@@ -75,17 +76,20 @@ export default function Dashboard() {
             Bem-vindo ao seu painel de controle de honorários contábeis
           </p>
         </div>
-        <Button
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <DashboardWidgets />
+          <Button
           type="button"
           variant="outline"
           size="icon"
-          className="self-start"
+          className="h-10 w-10 rounded-2xl border border-white/50 bg-white/70 p-0 shadow-sm backdrop-blur-xl"
           onClick={togglePrivacyMode}
-          title={privacyMode ? "Mostrar valores" : "Ocultar valores"}
-          aria-label={privacyMode ? "Mostrar valores" : "Ocultar valores"}
+          title=
+          aria-label=
         >
           {privacyMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </Button>
+        </div>
       </div>
 
       <Card className="backdrop-blur-md bg-white/40 border-white/20">
