@@ -1,14 +1,32 @@
+import { useEffect, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { DollarSign, Users, Clock, AlertCircle, BriefcaseBusiness, CheckCircle2 } from "lucide-react";
+import { DollarSign, Users, Clock, AlertCircle, BriefcaseBusiness, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const companyId = user?.companyId;
+  const [privacyMode, setPrivacyMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setPrivacyMode(window.localStorage.getItem("contafacil-dashboard-privacy") === "true");
+  }, []);
+
+  const togglePrivacyMode = () => {
+    setPrivacyMode(current => {
+      const next = !current;
+      if (typeof window !== "undefined") window.localStorage.setItem("contafacil-dashboard-privacy", String(next));
+      return next;
+    });
+  };
+
+  const renderFinancialValue = (value: number) => privacyMode ? "R$ •••••" : formatCurrency(value);
 
   const { data: stats, isLoading: statsLoading } = trpc.dashboardStats.getStats.useQuery(
     { companyId: companyId || 0 },
@@ -48,13 +66,19 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Header with greeting */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Olá, {user?.name || "ContaFácil"}! 👋
-        </h1>
-        <p className="text-muted-foreground">
-          Bem-vindo ao seu painel de controle de honorários contábeis
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Olá, {user?.name || "ContaFácil"}! 👋
+          </h1>
+          <p className="text-muted-foreground">
+            Bem-vindo ao seu painel de controle de honorários contábeis
+          </p>
+        </div>
+        <Button type="button" variant="outline" className="gap-2 self-start" onClick={togglePrivacyMode}>
+          {privacyMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          {privacyMode ? "Mostrar valores" : "Ocultar valores"}
+        </Button>
       </div>
 
       <Card className="backdrop-blur-md bg-white/40 border-white/20">
@@ -100,7 +124,7 @@ export default function Dashboard() {
                   <Skeleton className="h-8 w-32" />
                 ) : stats ? (
                   <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(Number(stats.totalReceived) || 0)}
+                    {renderFinancialValue(Number(stats.totalReceived) || 0)}
                   </div>
                 ) : null}
                 <p className="text-xs text-muted-foreground mt-1">Honorários recebidos</p>
@@ -144,7 +168,7 @@ export default function Dashboard() {
               <Skeleton className="h-8 w-32" />
             ) : stats ? (
               <div className="text-2xl font-bold text-yellow-600">
-                {formatCurrency(Number(stats.pendingAmount) || 0)}
+                {renderFinancialValue(Number(stats.pendingAmount) || 0)}
               </div>
             ) : null}
             <p className="text-xs text-muted-foreground mt-1">
@@ -164,7 +188,7 @@ export default function Dashboard() {
               <Skeleton className="h-8 w-32" />
             ) : stats ? (
               <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(Number(stats.overdueAmount) || 0)}
+                {renderFinancialValue(Number(stats.overdueAmount) || 0)}
               </div>
             ) : null}
             <p className="text-xs text-muted-foreground mt-1">
@@ -185,7 +209,7 @@ export default function Dashboard() {
               <>
                 {isLoading ? <Skeleton className="h-8 w-32" /> : (
                   <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(Number(stats?.servicesReceived) || 0)}
+                    {renderFinancialValue(Number(stats?.servicesReceived) || 0)}
                   </div>
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">Recebidos no mês</p>
@@ -208,7 +232,7 @@ export default function Dashboard() {
               <>
                 {isLoading ? <Skeleton className="h-8 w-32" /> : (
                   <div className="text-2xl font-bold text-yellow-600">
-                    {formatCurrency(Number(stats?.servicesPendingAmount) || 0)}
+                    {renderFinancialValue(Number(stats?.servicesPendingAmount) || 0)}
                   </div>
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">{Number(stats?.servicesPendingCount) || 0} serviço(s)</p>
@@ -261,6 +285,10 @@ export default function Dashboard() {
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-80 w-full" />
+            ) : privacyMode ? (
+              <div className="flex h-[300px] items-center justify-center rounded-2xl border border-dashed bg-white/30 text-sm font-medium text-muted-foreground">
+                Valores ocultos pelo modo privacidade
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={monthlyData}>
@@ -310,7 +338,7 @@ export default function Dashboard() {
                     <span className="text-sm font-medium">Pagos</span>
                   </div>
                   <span className="text-sm font-bold">
-                    {stats ? formatCurrency(Number(stats.totalReceived) || 0) : "R$ 0,00"}
+                    {stats ? renderFinancialValue(Number(stats.totalReceived) || 0) : (privacyMode ? "R$ •••••" : "R$ 0,00")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -319,7 +347,7 @@ export default function Dashboard() {
                     <span className="text-sm font-medium">Pendentes</span>
                   </div>
                   <span className="text-sm font-bold">
-                    {stats ? formatCurrency(Number(stats.pendingAmount) || 0) : "R$ 0,00"}
+                    {stats ? renderFinancialValue(Number(stats.pendingAmount) || 0) : (privacyMode ? "R$ •••••" : "R$ 0,00")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -328,7 +356,7 @@ export default function Dashboard() {
                     <span className="text-sm font-medium">Vencidos</span>
                   </div>
                   <span className="text-sm font-bold">
-                    {stats ? formatCurrency(Number(stats.overdueAmount) || 0) : "R$ 0,00"}
+                    {stats ? renderFinancialValue(Number(stats.overdueAmount) || 0) : (privacyMode ? "R$ •••••" : "R$ 0,00")}
                   </span>
                 </div>
               </div>

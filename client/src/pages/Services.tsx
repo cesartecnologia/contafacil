@@ -110,6 +110,10 @@ function getPaymentMethodLabel(value?: string | null) {
   return value ? paymentMethodLabels[value] || value : "Não informado";
 }
 
+function getUserLabel(name?: string | null) {
+  return name && name.trim() ? name : "Não informado";
+}
+
 function getPaymentStatusBadge(status: string) {
   return status === "paid"
     ? <Badge className="bg-green-500">Pago</Badge>
@@ -336,6 +340,8 @@ export default function Services() {
         getPaymentMethodLabel(service.paymentMethod),
         formatDateSafe(service.serviceDate, "—"),
         service.notes,
+        service.createdByName,
+        service.paidByName,
       ]
         .filter(Boolean)
         .join(" ")
@@ -634,6 +640,14 @@ export default function Services() {
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Forma de pagamento</p>
                   <p className="font-medium">{getPaymentMethodLabel(detailsService.paymentMethod)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Autor do serviço</p>
+                  <p className="font-medium">{getUserLabel(detailsService.createdByName)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Pagamento registrado por</p>
+                  <p className="font-medium">{getUserLabel(detailsService.paidByName)}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Data do pagamento</p>

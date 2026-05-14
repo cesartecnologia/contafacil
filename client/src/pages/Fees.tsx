@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ const feeSchema = z.object({
   competence: z.string().min(1, "Competência é obrigatória"),
   amount: z.string().min(1, "Valor é obrigatório"),
   dueDate: z.string().min(1, "Data de vencimento é obrigatória"),
-  paymentMethod: z.enum(["nao_informado", "pix", "dinheiro", "boleto", "cartao_credito", "cartao_debito", "transferencia", "outros"]),
 });
 
 type FeeFormData = z.infer<typeof feeSchema>;
@@ -55,6 +54,9 @@ export default function Fees() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [detailsFee, setDetailsFee] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [feeToPay, setFeeToPay] = useState<any | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState("");
   const { confirm } = useConfirmDialog();
 
   const { data: fees = [], isLoading: feesLoading, refetch: refetchFees } = trpc.fees.listByCompany.useQuery(
@@ -88,6 +90,18 @@ export default function Fees() {
     onError: (error) => toast.error("Erro ao atualizar honorário: " + error.message),
   });
 
+  const markPaidMutation = trpc.fees.markPaid.useMutation({
+    onSuccess: () => {
+      toast.success("Pagamento registrado com sucesso!");
+      refetchFees();
+      setPaymentDialogOpen(false);
+      setFeeToPay(null);
+      setPaymentMethod("");
+      setDetailsFee(null);
+    },
+    onError: error => toast.error(`Erro ao registrar pagamento: ${error.message}`),
+  });
+
   const deleteMutation = trpc.fees.delete.useMutation({
     onSuccess: () => {
       toast.success("Honorário excluído com sucesso!");
@@ -98,8 +112,17 @@ export default function Fees() {
 
   const form = useForm<FeeFormData>({
     resolver: zodResolver(feeSchema),
-    defaultValues: { clientId: "", competence: "", amount: "", dueDate: "", paymentMethod: "nao_informado" },
+    defaultValues: { clientId: "", competence: "", amount: "", dueDate: "" },
   });
+
+  const selectedClientId = form.watch("clientId");
+
+  useEffect(() => {
+    if (editingId || !selectedClientId) return;
+    const selectedClient = clients.find(client => String(client.id) === selectedClientId);
+    if (!selectedClient) return;
+    form.setValue("amount", String(selectedClient.monthlyFee || ""), { shouldValidate: true });
+  }, [clients, editingId, form, selectedClientId]);
 
   const onSubmit = (data: FeeFormData) => {
     if (!companyId) return;
@@ -113,7 +136,6 @@ export default function Fees() {
         competence: data.competence,
         amount: data.amount,
         dueDate,
-        paymentMethod: data.paymentMethod === "nao_informado" ? null : data.paymentMethod,
       });
       return;
     }
@@ -124,7 +146,6 @@ export default function Fees() {
       competence: data.competence,
       amount: data.amount,
       dueDate,
-      paymentMethod: data.paymentMethod === "nao_informado" ? null : data.paymentMethod,
     });
   };
 
@@ -147,13 +168,26 @@ export default function Fees() {
       competence: fee.competence,
       amount: String(fee.amount),
       dueDate: new Date(fee.dueDate).toISOString().slice(0, 10),
-      paymentMethod: fee.paymentMethod || "nao_informado",
     });
     setIsOpen(true);
   };
 
   const handleMarkAsPaid = (fee: any) => {
-    updateMutation.mutate({ id: fee.id, status: "paid", paidDate: new Date() });
+    setFeeToPay(fee);
+    setPaymentMethod("");
+    setPaymentDialogOpen(true);
+  };
+
+  const confirmPayment = () => {
+    if (!feeToPay) return;
+    if (!paymentMethod) {
+      toast.error("Selecione a forma de pagamento.");
+      return;
+    }
+    markPaidMutation.mutate({
+      id: feeToPay.id,
+      paymentMethod: paymentMethod as "pix" | "dinheiro" | "boleto" | "cartao_credito" | "cartao_debito" | "transferencia" | "outros",
+    });
   };
 
   const receiptMutation = trpc.receipts.generate.useMutation();
@@ -296,25 +330,7 @@ export default function Fees() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="paymentMethod" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Forma de pagamento</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="nao_informado">Não informado</SelectItem>
-                          <SelectItem value="pix">PIX</SelectItem>
-                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                          <SelectItem value="boleto">Boleto</SelectItem>
-                          <SelectItem value="cartao_credito">Cartão de crédito</SelectItem>
-                          <SelectItem value="cartao_debito">Cartão de débito</SelectItem>
-                          <SelectItem value="transferencia">Transferência</SelectItem>
-                          <SelectItem value="outros">Outros</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+
                 </div>
                 <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
                   {editingId ? "Salvar alterações" : "Registrar Honorário"}
@@ -476,6 +492,45 @@ export default function Fees() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={paymentDialogOpen} onOpenChange={open => {
+        setPaymentDialogOpen(open);
+        if (!open) { setFeeToPay(null); setPaymentMethod(""); }
+      }}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Registrar pagamento</DialogTitle>
+            <DialogDescription>Selecione a forma de pagamento para concluir o recebimento deste honorário.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {feeToPay ? (
+              <div className="rounded-2xl border bg-muted/30 p-4 text-sm">
+                <p className="font-semibold">{getClientName(feeToPay.clientId)}</p>
+                <p className="mt-1 text-muted-foreground">Competência {feeToPay.competence} · {formatCurrency(Number(feeToPay.amount))}</p>
+              </div>
+            ) : null}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Forma de pagamento</p>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancelar</Button>
+              <Button type="button" onClick={confirmPayment} disabled={markPaidMutation.isPending || !paymentMethod}>{markPaidMutation.isPending ? "Salvando..." : "Confirmar pagamento"}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!detailsFee} onOpenChange={open => !open && setDetailsFee(null)}>
         <DialogContent className="sm:max-w-[620px]">

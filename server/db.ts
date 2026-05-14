@@ -389,8 +389,83 @@ export async function createClient(client: InsertClient) {
     phone: client.phone ?? null,
     address: client.address ?? null,
     taxRegime: client.taxRegime ?? null,
+    notes: client.notes ?? null,
     status: client.status || "active",
   } as Client);
+}
+
+
+function normalizeDocumentDigits(value: string | null | undefined) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function normalizePhoneDigits(value: string | null | undefined) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function normalizeImportedMoney(value: string | null | undefined) {
+  const raw = (value || "").trim();
+  if (!raw) return "0.00";
+  let normalized = raw.replace(/\s/g, "").replace(/^R\$\s?/i, "");
+  const hasComma = normalized.includes(",");
+  const hasDot = normalized.includes(".");
+  if (hasComma && hasDot) normalized = normalized.replace(/\./g, "").replace(",", ".");
+  else if (hasComma) normalized = normalized.replace(",", ".");
+  const numberValue = Number(normalized);
+  if (!Number.isFinite(numberValue) || numberValue < 0) throw new Error(`Valor de honorário inválido: ${raw}`);
+  return numberValue.toFixed(2);
+}
+
+export type ClientImportRow = {
+  name: string;
+  cpfCnpj: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  monthlyFee?: string | null;
+  notes?: string | null;
+  taxRegime?: Client["taxRegime"];
+};
+
+export async function importClientsBatch(companyId: number, rows: ClientImportRow[]) {
+  const existingClients = await getClientsByCompanyId(companyId);
+  const existingDocuments = new Set(existingClients.map(client => normalizeDocumentDigits(client.cpfCnpj)).filter(Boolean));
+  const existingPhones = new Set(existingClients.map(client => normalizePhoneDigits(client.phone)).filter(Boolean));
+  const batchDocuments = new Set<string>();
+  const batchPhones = new Set<string>();
+  let imported = 0;
+  let duplicates = 0;
+  const errors: Array<{ row: number; name?: string; reason: string }> = [];
+  for (const [index, row] of rows.entries()) {
+    try {
+      const name = row.name?.trim();
+      const cpfCnpj = row.cpfCnpj?.trim();
+      const documentDigits = normalizeDocumentDigits(cpfCnpj);
+      const phoneDigits = normalizePhoneDigits(row.phone);
+      if (!name) throw new Error("Nome não informado.");
+      if (!cpfCnpj || documentDigits.length < 11) throw new Error("CPF/CNPJ inválido.");
+      const duplicateByDocument = existingDocuments.has(documentDigits) || batchDocuments.has(documentDigits);
+      const duplicateByPhone = Boolean(phoneDigits) && (existingPhones.has(phoneDigits) || batchPhones.has(phoneDigits));
+      if (duplicateByDocument || duplicateByPhone) { duplicates += 1; continue; }
+      await createClient({
+        companyId,
+        name,
+        cpfCnpj,
+        email: row.email?.trim() || null,
+        phone: row.phone?.trim() || null,
+        address: row.address?.trim() || null,
+        monthlyFee: normalizeImportedMoney(row.monthlyFee),
+        taxRegime: row.taxRegime ?? "simples_nacional",
+        notes: row.notes?.trim() || null,
+      });
+      existingDocuments.add(documentDigits); batchDocuments.add(documentDigits);
+      if (phoneDigits) { existingPhones.add(phoneDigits); batchPhones.add(phoneDigits); }
+      imported += 1;
+    } catch (error) {
+      errors.push({ row: index + 1, name: row.name, reason: error instanceof Error ? error.message : "Falha ao importar a linha." });
+    }
+  }
+  return { totalReceived: rows.length, imported, duplicates, errors, errorCount: errors.length };
 }
 
 export async function getClientsByCompanyId(companyId: number) {
@@ -432,6 +507,7 @@ export async function createFee(fee: InsertFee) {
     paidDate: fee.paidDate ?? null,
     receiptNumber,
     paymentMethod: fee.paymentMethod ?? null,
+    paidByUserId: fee.paidByUserId ?? null,
   } as Fee);
 }
 
@@ -456,7 +532,11 @@ export async function getFeeById(id: number) {
 export async function updateFee(id: number, data: Partial<InsertFee>) {
   const payload: Partial<Fee> = { ...(data as Partial<Fee>) };
   if (payload.status === "paid" && !payload.paidDate) payload.paidDate = now();
-  if (payload.status && payload.status !== "paid") payload.paidDate = null;
+  if (payload.status && payload.status !== "paid") {
+    payload.paidDate = null;
+    payload.paymentMethod = null;
+    payload.paidByUserId = null;
+  }
   return updateByNumericId<Fee>("fees", id, payload);
 }
 
@@ -480,9 +560,21 @@ export async function createService(service: InsertService) {
 export async function getServicesByCompanyId(companyId: number) {
   const db = await getDb();
   const result = await db.collection("services").where("companyId", "==", companyId).get();
-  return result.docs
+  const rows = result.docs
     .map(doc => normalizeRecord<Service>(doc.data()))
     .sort((a, b) => Number(b.id) - Number(a.id));
+
+  return Promise.all(rows.map(async service => {
+    const [createdBy, paidBy] = await Promise.all([
+      service.createdByUserId ? getUserById(service.createdByUserId).catch(() => undefined) : undefined,
+      service.paidByUserId ? getUserById(service.paidByUserId).catch(() => undefined) : undefined,
+    ]);
+    return {
+      ...service,
+      createdByName: createdBy?.name || createdBy?.email || "Não informado",
+      paidByName: paidBy?.name || paidBy?.email || null,
+    };
+  }));
 }
 
 export async function getServiceById(id: number) {

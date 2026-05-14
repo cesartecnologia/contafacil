@@ -8,6 +8,7 @@ import {
   getCompanyByOwnerId,
   updateCompany,
   createClient,
+  importClientsBatch,
   getClientsByCompanyId,
   getClientById,
   updateClient,
@@ -160,6 +161,7 @@ export const appRouter = router({
         phone: phoneText,
         address: optionalText(240),
         monthlyFee: moneyText,
+        notes: optionalText(1000),
         taxRegime: z.enum(["mei", "simples_nacional", "lucro_presumido", "lucro_real"]),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -172,6 +174,7 @@ export const appRouter = router({
           phone: input.phone || null,
           address: input.address || null,
           monthlyFee: input.monthlyFee,
+          notes: input.notes || null,
           taxRegime: input.taxRegime,
         });
       }),
@@ -194,12 +197,39 @@ export const appRouter = router({
         phone: phoneText,
         address: optionalText(240),
         monthlyFee: moneyText.optional(),
+        notes: optionalText(1000),
         taxRegime: z.enum(["mei", "simples_nacional", "lucro_presumido", "lucro_real"]).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         await assertClientAccess(ctx.user.companyId, input.id);
         const { id, ...data } = input;
         return updateClient(id, data);
+      }),
+
+    importBatch: protectedProcedure
+      .input(z.object({
+        companyId: z.number(),
+        rows: z.array(z.object({
+          name: safeText(180),
+          cpfCnpj: documentText,
+          phone: phoneText,
+          email: z.string().trim().email().max(180).optional().or(z.literal("")),
+          address: optionalText(240),
+          monthlyFee: z.string().trim().max(40).optional(),
+          notes: optionalText(1000),
+          taxRegime: z.enum(["mei", "simples_nacional", "lucro_presumido", "lucro_real"]).optional(),
+        })).min(1).max(1000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertCompanyAccess(ctx.user.companyId, input.companyId);
+        return importClientsBatch(input.companyId, input.rows.map(row => ({
+          ...row,
+          email: row.email || null,
+          phone: row.phone || null,
+          address: row.address || null,
+          notes: row.notes || null,
+          taxRegime: row.taxRegime ?? "simples_nacional",
+        })));
       }),
 
     delete: adminProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
@@ -216,7 +246,6 @@ export const appRouter = router({
         competence: competenceText,
         amount: moneyText,
         dueDate: z.date(),
-        paymentMethod: z.enum(["pix", "dinheiro", "boleto", "cartao_credito", "cartao_debito", "transferencia", "outros"]).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         assertCompanyAccess(ctx.user.companyId, input.companyId);
@@ -227,7 +256,6 @@ export const appRouter = router({
           competence: input.competence,
           amount: input.amount,
           dueDate: input.dueDate,
-          paymentMethod: input.paymentMethod ?? null,
         });
       }),
 
@@ -259,8 +287,29 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await assertFeeAccess(ctx.user.companyId, input.id);
         if (input.clientId) await assertClientAccess(ctx.user.companyId, input.clientId);
+        if (input.status === "paid" && !input.paymentMethod) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a forma de pagamento para registrar como pago." });
+        }
         const { id, ...data } = input;
-        return updateFee(id, data);
+        return updateFee(id, {
+          ...data,
+          ...(input.status === "paid" ? { paidByUserId: ctx.user.id } : {}),
+        });
+      }),
+
+    markPaid: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        paymentMethod: paymentMethodText,
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await assertFeeAccess(ctx.user.companyId, input.id);
+        return updateFee(input.id, {
+          status: "paid",
+          paidDate: new Date(),
+          paymentMethod: input.paymentMethod,
+          paidByUserId: ctx.user.id,
+        });
       }),
 
     delete: adminProcedure.input(z.number()).mutation(async ({ ctx, input }) => {

@@ -56,12 +56,13 @@ export interface Client {
   address: string | null;
   monthlyFee: string;
   taxRegime: TaxRegime | null;
+  notes: string | null;
   status: ClientStatus;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export type InsertClient = Omit<Client, "id" | "createdAt" | "updatedAt" | "email" | "phone" | "address" | "taxRegime" | "status"> & { email?: string | null; phone?: string | null; address?: string | null; taxRegime?: TaxRegime | null; status?: ClientStatus };
+export type InsertClient = Omit<Client, "id" | "createdAt" | "updatedAt" | "email" | "phone" | "address" | "taxRegime" | "notes" | "status"> & { email?: string | null; phone?: string | null; address?: string | null; taxRegime?: TaxRegime | null; notes?: string | null; status?: ClientStatus };
 
 export interface Fee {
   id: number;
@@ -74,15 +75,17 @@ export interface Fee {
   paidDate: Date | null;
   receiptNumber: string | null;
   paymentMethod: PaymentMethod | null;
+  paidByUserId: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export type InsertFee = Omit<Fee, "id" | "createdAt" | "updatedAt" | "receiptNumber" | "status" | "paidDate" | "paymentMethod"> & {
+export type InsertFee = Omit<Fee, "id" | "createdAt" | "updatedAt" | "receiptNumber" | "status" | "paidDate" | "paymentMethod" | "paidByUserId"> & {
   status?: FeeStatus;
   paidDate?: Date | null;
   receiptNumber?: string | null;
   paymentMethod?: PaymentMethod | null;
+  paidByUserId?: number | null;
 };
 
 

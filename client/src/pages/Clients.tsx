@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Plus, Trash2, Edit2, Eye, Building2, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { MoreVertical, Plus, Trash2, Edit2, Eye, Building2, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Search, NotebookPen } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/ConfirmDialogProvider";
+import { ClientImportDialog } from "@/components/ClientImportDialog";
 
 const taxRegimeLabels = {
   mei: "MEI",
@@ -32,6 +33,7 @@ const clientSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   monthlyFee: z.string().min(1, "Honorário mensal é obrigatório"),
+  notes: z.string().max(1000, "As observações são muito longas").optional(),
   taxRegime: z.enum(["mei", "simples_nacional", "lucro_presumido", "lucro_real"]),
 });
 
@@ -64,6 +66,7 @@ export default function Clients() {
       client.phone,
       client.address,
       client.monthlyFee,
+      client.notes,
       taxRegimeLabels[(client.taxRegime || "simples_nacional") as keyof typeof taxRegimeLabels],
     ]
       .filter(Boolean)
@@ -125,6 +128,7 @@ export default function Clients() {
       phone: "",
       address: "",
       monthlyFee: "",
+      notes: "",
       taxRegime: "simples_nacional",
     },
   });
@@ -147,6 +151,7 @@ export default function Clients() {
       phone: client.phone || "",
       address: client.address || "",
       monthlyFee: client.monthlyFee,
+      notes: client.notes || "",
       taxRegime: client.taxRegime || "simples_nacional",
     });
     setIsOpen(true);
@@ -175,6 +180,7 @@ export default function Clients() {
         phone: "",
         address: "",
         monthlyFee: "",
+        notes: "",
         taxRegime: "simples_nacional",
       });
     }
@@ -187,13 +193,15 @@ export default function Clients() {
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="mt-1 text-muted-foreground">Gerencie seus clientes, regimes tributários e honorários mensais.</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={closeClientDialog}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo Cliente
-            </Button>
-          </DialogTrigger>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <ClientImportDialog companyId={companyId} clients={clients} onImported={refetch} />
+          <Dialog open={isOpen} onOpenChange={closeClientDialog}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Cliente
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[560px]">
             <DialogHeader>
               <DialogTitle>{editingId ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
@@ -253,6 +261,13 @@ export default function Clients() {
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl><Input placeholder="Observações internas do cliente" {...field} value={field.value ?? ""} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <FormField control={form.control} name="monthlyFee" render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel>Honorário Mensal (R$)</FormLabel>
@@ -266,7 +281,8 @@ export default function Clients() {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex justify-start">
@@ -416,6 +432,10 @@ export default function Clients() {
               <div className="md:col-span-2">
                 <p className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground"><MapPin className="h-3 w-3" /> Endereço</p>
                 <p className="font-medium">{detailsClient.address || "Não informado"}</p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground"><NotebookPen className="h-3 w-3" /> Observações</p>
+                <p className="font-medium whitespace-pre-wrap">{detailsClient.notes || "Não informado"}</p>
               </div>
               <div className="md:col-span-2">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Honorário mensal</p>
